@@ -1,4 +1,4 @@
-tml>
+YPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -77,6 +77,14 @@ tml>
                         </button>
                     </form>
                     <p id="errorFeedback" class="text-red-500 text-[10px] font-bold mt-4 text-center hidden"></p>
+                    
+                    <!-- Botón de ayuda para la carga de los tickets detectados -->
+                    <div id="pendingUploadBox" class="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-100 hidden">
+                        <p class="text-[10px] font-black text-amber-600 uppercase mb-2">Tickets detectados</p>
+                        <button onclick="uploadPendingTickets()" class="w-full text-xs font-bold py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                            Subir gastos de la foto
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -133,6 +141,12 @@ tml>
 
         let db, auth, myChart;
 
+        // Gastos detectados en la imagen proporcionada por el usuario
+        const pendingTickets = [
+            { category: "🛒 Súper / Comida", amount: 15541.00, note: "Súper Mami" },
+            { category: "🏥 Salud", amount: 5499.00, note: "Farmacity" }
+        ];
+
         function init() {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
@@ -147,13 +161,49 @@ tml>
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     const savedName = localStorage.getItem('user_name');
-                    if (savedName) showApp(savedName);
+                    if (savedName) {
+                        showApp(savedName);
+                        // Mostrar el botón de carga si hay tickets pendientes
+                        document.getElementById('pendingUploadBox').classList.remove('hidden');
+                    }
                 } else {
                     signInAnonymously(auth);
                 }
             });
             initChart();
         }
+
+        window.uploadPendingTickets = async () => {
+            const user = localStorage.getItem('user_name');
+            const currentMonth = document.getElementById('month').value;
+            const btn = document.querySelector('#pendingUploadBox button');
+            
+            btn.innerText = "Subiendo...";
+            btn.disabled = true;
+
+            try {
+                for (const ticket of pendingTickets) {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gastos'), {
+                        month: currentMonth,
+                        category: ticket.category,
+                        amount: ticket.amount,
+                        user: user + " (Auto)",
+                        timestamp: new Date().getTime(),
+                        note: ticket.note
+                    });
+                }
+                document.getElementById('pendingUploadBox').innerHTML = `
+                    <div class="text-xs font-bold text-green-600 flex items-center gap-2">
+                        <span>✅</span> Gastos cargados correctamente
+                    </div>
+                `;
+                setTimeout(() => document.getElementById('pendingUploadBox').classList.add('hidden'), 3000);
+            } catch (err) {
+                console.error(err);
+                btn.innerText = "Error al subir";
+                btn.disabled = false;
+            }
+        };
 
         document.getElementById('loginForm').onsubmit = (e) => {
             e.preventDefault();
@@ -240,7 +290,9 @@ tml>
                             </div>
                             <div>
                                 <p class="font-bold text-slate-800">${i.category.split(' ').slice(1).join(' ')}</p>
-                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">${i.month} • Por ${i.user}</p>
+                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">
+                                    ${i.month} • Por ${i.user} ${i.note ? `[${i.note}]` : ''}
+                                </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-4">
