@@ -11,6 +11,9 @@ tml>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .hidden { display: none !important; }
         .btn-loading { pointer-events: none; opacity: 0.7; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -58,22 +61,22 @@ tml>
                     <form id="expenseForm" class="space-y-5">
                         <div>
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mes del Gasto</label>
-                            <select id="month" class="w-full p-4 rounded-xl bg-slate-50 border-none font-bold text-slate-700 mt-1 focus:ring-2 focus:ring-indigo-500"></select>
+                            <select id="month" class="w-full p-4 rounded-xl bg-slate-50 border-none font-bold text-slate-700 mt-1 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
                         </div>
                         <div>
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Categoría</label>
-                            <select id="category" class="w-full p-4 rounded-xl bg-slate-50 border-none font-bold text-slate-700 mt-1 focus:ring-2 focus:ring-indigo-500"></select>
+                            <select id="category" class="w-full p-4 rounded-xl bg-slate-50 border-none font-bold text-slate-700 mt-1 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
                         </div>
                         <div>
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Monto ($)</label>
                             <input type="number" step="0.01" id="amount" placeholder="0.00" required 
-                                class="w-full p-4 rounded-xl bg-slate-50 border-none font-black text-2xl text-slate-900 mt-1 focus:ring-2 focus:ring-indigo-500">
+                                class="w-full p-4 rounded-xl bg-slate-50 border-none font-black text-2xl text-slate-900 mt-1 focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <button type="submit" id="btnSave" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-black transition-all active:scale-95">
                             Guardar Gasto
                         </button>
                     </form>
-                    <p id="errorFeedback" class="text-red-500 text-[10px] font-bold mt-4 text-center hidden">Error de conexión. Revisa Firestore.</p>
+                    <p id="errorFeedback" class="text-red-500 text-[10px] font-bold mt-4 text-center hidden"></p>
                 </div>
             </div>
 
@@ -90,7 +93,6 @@ tml>
                             <canvas id="mainChart"></canvas>
                         </div>
                     </div>
-                    <!-- Decoración fondo -->
                     <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
                 </div>
 
@@ -116,7 +118,6 @@ tml>
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // Usando tus credenciales de la captura image_b6579c.png
         const firebaseConfig = {
             apiKey: "AIzaSyD8ep1IsfmQN0S_xHlTd2D26_kl_BnNaUs",
             authDomain: "gastos-familiares-f45a7.firebaseapp.com",
@@ -132,13 +133,11 @@ tml>
 
         let db, auth, myChart;
 
-        // Inicialización
         function init() {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
 
-            // Poblar selects
             const mSel = document.getElementById('month');
             const cSel = document.getElementById('category');
             const now = new Date();
@@ -156,7 +155,6 @@ tml>
             initChart();
         }
 
-        // Login / Logout
         document.getElementById('loginForm').onsubmit = (e) => {
             e.preventDefault();
             const name = document.getElementById('username').value.trim();
@@ -179,7 +177,6 @@ tml>
             startListening();
         }
 
-        // Base de Datos
         function startListening() {
             const q = collection(db, 'artifacts', appId, 'public', 'data', 'gastos');
             onSnapshot(q, (snap) => {
@@ -187,8 +184,9 @@ tml>
                 updateUI(data);
             }, (err) => {
                 console.error("Error Firestore:", err);
-                document.getElementById('errorFeedback').classList.remove('hidden');
-                document.getElementById('errorFeedback').innerText = "⚠️ Error: Asegúrate de activar CLOUD FIRESTORE en el panel de Firebase.";
+                const feedback = document.getElementById('errorFeedback');
+                feedback.classList.remove('hidden');
+                feedback.innerText = "Error al conectar con la base de datos.";
             });
         }
 
@@ -199,11 +197,9 @@ tml>
             
             btn.classList.add('btn-loading');
             btn.innerText = "Guardando...";
-            document.getElementById('errorFeedback').classList.add('hidden');
 
             try {
-                // Si esto falla después de unos segundos, es que Firestore no está activo
-                const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gastos'), {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gastos'), {
                     month: document.getElementById('month').value,
                     category: document.getElementById('category').value,
                     amount: parseFloat(amountInput.value),
@@ -213,7 +209,9 @@ tml>
                 amountInput.value = "";
             } catch (err) {
                 console.error(err);
-                document.getElementById('errorFeedback').classList.remove('hidden');
+                const feedback = document.getElementById('errorFeedback');
+                feedback.classList.remove('hidden');
+                feedback.innerText = "Error al guardar. Intenta de nuevo.";
             } finally {
                 btn.classList.remove('btn-loading');
                 btn.innerText = "Guardar Gasto";
@@ -226,15 +224,13 @@ tml>
             }
         };
 
-        // UI y Gráficos
         function updateUI(items) {
             const list = document.getElementById('list');
             const sorted = items.sort((a,b) => b.timestamp - a.timestamp);
-            
             document.getElementById('recordCount').innerText = `${items.length} Registros`;
             
             if (sorted.length === 0) {
-                list.innerHTML = `<div class="text-center py-12 text-slate-300 italic">No hay registros este mes.</div>`;
+                list.innerHTML = `<div class="text-center py-12 text-slate-300 italic">No hay registros aún.</div>`;
             } else {
                 list.innerHTML = sorted.map(i => `
                     <div class="flex justify-between items-center p-5 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-lg transition-all group">
@@ -260,7 +256,6 @@ tml>
             const total = items.reduce((acc, i) => acc + i.amount, 0);
             document.getElementById('totalGlobal').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
             
-            // Datos para el gráfico
             const totalsByMonth = months.map(m => items.filter(i => i.month === m).reduce((acc, i) => acc + i.amount, 0));
             myChart.data.datasets[0].data = totalsByMonth;
             myChart.update();
@@ -287,10 +282,7 @@ tml>
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { 
-                        x: { display: false }, 
-                        y: { display: false } 
-                    }
+                    scales: { x: { display: false }, y: { display: false } }
                 }
             });
         }
